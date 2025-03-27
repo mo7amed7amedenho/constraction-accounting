@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// نموذج الموظف
+model Employee {
+  id          Int          @id @default(autoincrement())
+  name        String
+  jobTitle    String
+  nationalId  String       @unique
+  phoneNumber String       @unique
+  dailySalary Decimal      @default(0)
+  salaries    Salary[]
+  attendance  Attendance[]
+  deductions  Deduction[]
+  bonuses     Bonus[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([name])
+}
+
+/// نموذج الراتب
+model Salary {
+  id            Int      @id @default(autoincrement())
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  employeeId    Int
+  deductions    Decimal  @default(0)
+  overtimeHours Float    @default(0)
+  totalSalary   Decimal
+  periodStart   DateTime
+  periodEnd     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([employeeId, periodStart])
+}
+
+/// نموذج الحضور
+model Attendance {
+  id            Int       @id @default(autoincrement())
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId    Int
+  date          DateTime
+  checkIn       DateTime
+  checkOut      DateTime?
+  normalHours   Float     @default(0)
+  overtimeHours Float     @default(0)
+  totalTime     Float     @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([employeeId, date])
+}
+
+/// نموذج الخصومات
+model Deduction {
+  id         Int      @id @default(autoincrement())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId Int
+  amount     Decimal
+  date       DateTime @default(now())
+  createdAt  DateTime @default(now())
+}
+
+/// نموذج المكافآت
+model Bonus {
+  id         Int      @id @default(autoincrement())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId Int
+  amount     Decimal
+  reason     String
+  date       DateTime @default(now())
+  createdAt  DateTime @default(now())
+}
+
+/// نموذج العهدة
+model Custody {
+  id        Int         @id @default(autoincrement())
+  name      String
+  code      String
+  company   String
+  quantity  Int
+  remaining Int         @default(0)
+  status    String      @default("active")
+  time      DateTime
+  expenses  Expense[]
+  project   Project?    @relation(fields: [projectId], references: [id])
+  projectId Int?
+  createdAt DateTime    @default(now())
+  AddAmount AddAmount[]
+}
+
+/// نموذج إضافة مبلغ
+model AddAmount {
+  id        Int      @id @default(autoincrement())
+  amount    Int // المبلغ المضاف
+  custody   Custody  @relation(fields: [custodyId], references: [id])
+  custodyId Int
+  createdAt DateTime @default(now())
+}
+
+/// نموذج المصروفات
+model Expense {
+  id                Int      @id @default(autoincrement())
+  description       String
+  amount            Decimal
+  expenseType       String
+  responsiblePerson String
+  custody           Custody  @relation(fields: [custodyId], references: [id])
+  custodyId         Int
+  project           Project? @relation(fields: [projectId], references: [id])
+  projectId         Int?
+  date              DateTime @default(now())
+  createdAt         DateTime @default(now())
+}
+
+/// نموذج المشروع
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String
+  managerName String
+  budget      Decimal
+  startDate   DateTime
+  endDate     DateTime?
+  status      String    @default("active")
+  custodies   Custody[]
+  expenses    Expense[]
+  createdAt   DateTime  @default(now())
+}
+
+/// نموذج الموردين
+model Supplier {
+  id          Int               @id @default(autoincrement())
+  name        String
+  phoneNumber String
+  address     String
+  invoices    SupplierInvoice[]
+  inventory   Inventory[]
+  createdAt   DateTime          @default(now())
+}
+
+/// نموذج فواتير الموردين
+model SupplierInvoice {
+  id          Int           @id @default(autoincrement())
+  supplier    Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId  Int
+  invoiceType String
+  items       InvoiceItem[]
+  totalAmount Decimal       @default(0)
+  createdAt   DateTime      @default(now())
+}
+
+model InvoiceItem {
+  id        Int             @id @default(autoincrement())
+  invoice   SupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade) // ✅ يتم وضع onDelete هنا
+  invoiceId Int
+  itemName  String
+  quantity  Int
+  price     Decimal
+}
+
+/// نموذج المخزون
+model Inventory {
+  id           Int       @id @default(autoincrement())
+  itemName     String
+  category     String
+  itemType     String
+  purchaseDate DateTime
+  price        Decimal
+  quantity     Int
+  minQuantity  Int       @default(0)
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId   Int?
+  createdAt    DateTime  @default(now())
+
+  @@index([itemName, category])
+}
+
+/// نموذج المستخدم
+model User {
+  id          Int          @id @default(autoincrement())
+  email       String       @unique
+  name        String
+  password    String
+  role        String
+  permissions Permission[]
+  createdAt   DateTime     @default(now())
+}
+
+/// نموذج الصلاحيات
+model Permission {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  menuItem  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, menuItem])
+}
