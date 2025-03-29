@@ -1,12 +1,14 @@
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Alexandria } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
+import Navbar from "@/components/sections/Navbar";
 import { AntTheme } from "@/components/providers/ant-theme";
 import { MUITheme } from "@/components/providers/mui-theme";
 import ToastProvider from "@/components/providers/ToastProvider";
-import Providers from "../components/providers/providers";
+import Providers from "@/components/providers/providers";
+import { AppSidebar } from "@/components/sections/Sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
-// تعريف الخط
 const alexandria = Alexandria({
   subsets: ["latin"],
   weight: ["400", "700"],
@@ -15,28 +17,34 @@ const alexandria = Alexandria({
   fallback: ["Cairo", "sans-serif"],
 });
 
-// تعريف نوع Props لـ RootLayout
 interface RootLayoutProps {
   children: React.ReactNode;
 }
-
-// تعريف الـ RootLayout كـ Function Component مع TypeScript
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body className={`flex min-h-screen ${alexandria.className}`}>
+      <body
+        className={`flex min-h-screen ${alexandria.className}`}
+        suppressHydrationWarning
+      >
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <AntTheme>
               <MUITheme>
-                <div className="flex flex-1">
-                  <div className="flex-1 flex flex-col">
-                    <main className="flex-1 bg-white dark:bg-neutral-950">
-                      <ToastProvider />
-                      {children}
-                    </main>
+                <SidebarProvider>
+                  <div className="flex flex-1">
+                    <div className="md:flex">
+                      <AppSidebar />
+                    </div>
+                    <div className="flex-1 flex flex-col w-full">
+                      <Navbar />
+                      <main className="flex-1 bg-white dark:bg-neutral-950">
+                        <ToastProvider />
+                        {children}
+                      </main>
+                    </div>
                   </div>
-                </div>
+                </SidebarProvider>
               </MUITheme>
             </AntTheme>
           </ThemeProvider>

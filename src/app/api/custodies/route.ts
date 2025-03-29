@@ -14,16 +14,18 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { name, code, company, quantity, date } = await req.json();
+  const { name, code, company, budget, date, projectId } = await req.json();
+
   const newCustody = await prisma.custody.create({
     data: {
       name,
       code,
       company,
-      quantity,
-      remaining: quantity,
+      budget,
+      remaining: budget,
       status: "active",
-      time: new Date(date), // تأكد من تخزين التاريخ
+      time: new Date(date),
+      project: projectId ? { connect: { id: projectId } } : undefined, // ربط العهدة بمشروع إذا كان projectId متاحًا
     },
   });
 

@@ -25,7 +25,7 @@ const createCustody = async (data: {
   company: string;
   remaining: number;
   date: string;
-  quantity: number;
+  budget: number;
 }) => {
   console.log("Sending request with data:", data); // Log قبل الـ request
   const response = await axios.post("/api/custodies", data);
@@ -38,16 +38,16 @@ export default function New({ isOpen, onClose }: AddCustody) {
     code: "",
     company: "",
     date: null as dayjs.Dayjs | null,
-    quantity: null as number | null,
+    budget: null as number | null,
     remaining: null as number | null, // اجعله null مبدئيًا
   });
 
-  // تحديث remaining عند تغيير quantity
+  // تحديث remaining عند تغيير budget
   React.useEffect(() => {
-    if (form.quantity !== null) {
-      setForm((prev) => ({ ...prev, remaining: prev.quantity }));
+    if (form.budget !== null) {
+      setForm((prev) => ({ ...prev, remaining: prev.budget }));
     }
-  }, [form.quantity]);
+  }, [form.budget]);
 
   const queryClient = useQueryClient();
 
@@ -72,7 +72,7 @@ export default function New({ isOpen, onClose }: AddCustody) {
   };
 
   const handleAmountChange = (value: number | null) => {
-    setForm((prev) => ({ ...prev, quantity: value ?? 0 })); // لو null، حطه 0
+    setForm((prev) => ({ ...prev, budget: value ?? 0 })); // لو null، حطه 0
   };
 
   const handleDateChange = (date: dayjs.Dayjs | null) => {
@@ -80,7 +80,7 @@ export default function New({ isOpen, onClose }: AddCustody) {
   };
 
   const handleSubmit = () => {
-    if (!form.name || !form.code || !form.date || form.quantity === null) {
+    if (!form.name || !form.code || !form.date || form.budget === null) {
       console.error("Form incomplete:", form);
       toast.error("يرجى ملء جميع الحقول");
       return;
@@ -90,9 +90,9 @@ export default function New({ isOpen, onClose }: AddCustody) {
       name: form.name,
       code: form.code,
       company: form.company,
-      remaining: form.quantity,
+      remaining: form.budget,
       date: form.date.toISOString(),
-      quantity: Number(form.quantity), // تأكد إنه number
+      budget: Number(form.budget), // تأكد إنه number
     };
     console.log("Submitting payload:", payload);
     mutation.mutate(payload);
@@ -135,7 +135,7 @@ export default function New({ isOpen, onClose }: AddCustody) {
             style={{ width: "100%" }}
             decimalSeparator="."
             placeholder="أدخل المبلغ"
-            value={form.quantity}
+            value={form.budget}
             onChange={handleAmountChange}
             formatter={(value) =>
               value
@@ -160,7 +160,7 @@ export default function New({ isOpen, onClose }: AddCustody) {
               !form.name ||
               !form.code ||
               !form.date ||
-              form.quantity === null ||
+              form.budget === null ||
               mutation.isPending
             }
             loading={mutation.isPending}

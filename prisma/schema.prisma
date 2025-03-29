@@ -43,17 +43,15 @@ model Salary {
 
 /// نموذج الحضور
 model Attendance {
-  id            Int       @id @default(autoincrement())
-  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId    Int
-  date          DateTime
-  checkIn       DateTime
-  checkOut      DateTime?
-  normalHours   Float     @default(0)
-  overtimeHours Float     @default(0)
-  totalTime     Float     @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id         Int       @id @default(autoincrement())
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId Int
+  date       DateTime // تاريخ اليوم
+  checkIn    DateTime // وقت الحضور
+  checkOut   DateTime? // وقت الانصراف (اختياري)
+  notes      String? // ملاحظات إضافية
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([employeeId, date])
 }
@@ -85,7 +83,7 @@ model Custody {
   name      String
   code      String
   company   String
-  quantity  Int
+  budget    Int
   remaining Int         @default(0)
   status    String      @default("active")
   time      DateTime
@@ -125,7 +123,6 @@ model Project {
   id          Int       @id @default(autoincrement())
   name        String
   managerName String
-  budget      Decimal
   startDate   DateTime
   endDate     DateTime?
   status      String    @default("active")
