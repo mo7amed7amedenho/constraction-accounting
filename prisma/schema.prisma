@@ -14,8 +14,8 @@ model Employee {
   jobTitle    String
   nationalId  String       @unique
   phoneNumber String       @unique
-  dailySalary Decimal      @default(0)
-  salaries    Salary[]
+  dailySalary Int      @default(0)
+  budget      Int      @default(0)
   attendance  Attendance[]
   deductions  Deduction[]
   bonuses     Bonus[]
@@ -23,22 +23,6 @@ model Employee {
   updatedAt   DateTime     @updatedAt
 
   @@index([name])
-}
-
-/// نموذج الراتب
-model Salary {
-  id            Int      @id @default(autoincrement())
-  employee      Employee @relation(fields: [employeeId], references: [id])
-  employeeId    Int
-  deductions    Decimal  @default(0)
-  overtimeHours Float    @default(0)
-  totalSalary   Decimal
-  periodStart   DateTime
-  periodEnd     DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([employeeId, periodStart])
 }
 
 /// نموذج الحضور
