@@ -19,7 +19,7 @@ const items = [
     icon: Users,
     items: [
       { title: "إدارة الموظفين", url: "/dashboard/Employees", icon: Users },
-      { title: "الحضور والانصراف", url: "#", icon: Clock },
+      { title: "الحضور والانصراف", url: "/dashboard/Attendance", icon: Clock },
     ],
   },
   {
