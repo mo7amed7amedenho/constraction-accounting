@@ -27,7 +27,7 @@ const items = [
     icon: DollarSign,
     items: [
       { title: "المصروفات", url: "#", icon: DollarSign },
-      { title: "الرواتب والسلف", url: "#", icon: DollarSign },
+      { title: "الرواتب والسلف", url: "/dashboard/Payroll", icon: DollarSign },
       { title: "العهد المالية", url: "/dashboard/Custody", icon: Package },
     ],
   },

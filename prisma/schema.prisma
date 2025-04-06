@@ -14,13 +14,15 @@ model Employee {
   jobTitle    String
   nationalId  String       @unique
   phoneNumber String       @unique
-  dailySalary Int      @default(0)
-  budget      Int      @default(0)
+  dailySalary Int          @default(0)
+  budget      Int          @default(0)
   attendance  Attendance[]
   deductions  Deduction[]
   bonuses     Bonus[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  Payroll     Payroll[]
+  Advance     Advance[]
 
   @@index([name])
 }
@@ -59,6 +61,36 @@ model Bonus {
   reason     String
   date       DateTime @default(now())
   createdAt  DateTime @default(now())
+}
+
+/// نموذج السلف
+model Advance {
+  id              Int       @id @default(autoincrement())
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  employeeId      Int
+  amount          Decimal // مبلغ السلفة
+  requestDate     DateTime  @default(now()) // تاريخ طلب السلفة
+  status          String    @default("pending") // الحالة: pending, approved, repaid
+  repaymentAmount Decimal? // المبلغ المسدد (اختياري)
+  repaymentDate   DateTime? // تاريخ السداد (اختياري)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+/// نموذج كشف الرواتب
+model Payroll {
+  id          Int      @id @default(autoincrement())
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  employeeId  Int
+  month       String // مثل "2025-04"
+  dailySalary Int
+  daysWorked  Int
+  totalSalary Decimal
+  bonuses     Decimal  @default(0)
+  deductions  Decimal  @default(0)
+  advances    Decimal  @default(0)
+  netSalary   Decimal
+  createdAt   DateTime @default(now())
 }
 
 /// نموذج العهدة

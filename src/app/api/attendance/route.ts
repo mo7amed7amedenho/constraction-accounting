@@ -2,9 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { differenceInHours } from "date-fns";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    // استخراج startDate و endDate من query parameters
+    const { searchParams } = new URL(req.url);
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    // إعداد شروط التصفية بناءً على التاريخ
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.date = {
+        gte: new Date(startDate), // أكبر من أو يساوي تاريخ البداية
+        lte: new Date(endDate),   // أقل من أو يساوي تاريخ النهاية
+      };
+    } else if (startDate) {
+      dateFilter.date = {
+        gte: new Date(startDate),
+      };
+    } else if (endDate) {
+      dateFilter.date = {
+        lte: new Date(endDate),
+      };
+    }
+
+    // جلب سجلات الحضور مع تطبيق الفلتر
     const attendance = await prisma.attendance.findMany({
+      where: dateFilter, // تطبيق فلتر التاريخ إذا وُجد
       include: {
         employee: {
           select: {
@@ -19,6 +43,7 @@ export async function GET() {
         date: "desc",
       },
     });
+
     return NextResponse.json(attendance);
   } catch (error) {
     console.error("خطأ في جلب سجلات الحضور:", error);
@@ -82,44 +107,45 @@ export async function POST(req: NextRequest) {
 // دالة لحساب الساعات وتحديث ميزانية الموظف
 async function updateEmployeeBudget(
   employeeId: number,
-  checkInTime: string,
-  checkOutTime: string,
-  dailySalary: number
+  checkInTime: string | Date,
+  checkOutTime: string | Date | null,
+  dailySalary: number,
+  action: "add" | "subtract" = "add"
 ) {
   try {
+    if (!checkOutTime) return; // لو مفيش وقت انصراف، متعملش حاجة
+
     const checkIn = new Date(checkInTime);
     const checkOut = new Date(checkOutTime);
-
-    // حساب عدد الساعات بين وقت الحضور والانصراف
     const hoursWorked = differenceInHours(checkOut, checkIn);
 
-    // حساب المبلغ المستحق
     let amountToAdd = 0;
+    const hourlyRate = dailySalary / 8; // سعر الساعة العادية
 
     if (hoursWorked >= 8) {
-      // إضافة الراتب اليومي الكامل
+      // لو 8 ساعات أو أكتر، ياخد الراتب كامل + ساعات إضافية
       amountToAdd = dailySalary;
-
-      // حساب الساعات الإضافية (أكثر من 8 ساعات)
       const overtimeHours = hoursWorked - 8;
       if (overtimeHours > 0) {
-        // حساب قيمة الساعة الإضافية (1.5 ضعف السعر العادي)
-        const hourlyRate = dailySalary / 8;
-        const overtimeRate = hourlyRate * 1.5;
+        const overtimeRate = hourlyRate * 1.5; // الساعة الإضافية بـ 1.5
         amountToAdd += overtimeHours * overtimeRate;
       }
+    } else if (hoursWorked >= 6.5) {
+      // لو بين 6.5 و 8 ساعات، ياخد الراتب اليومي كامل
+      amountToAdd = dailySalary;
     } else {
-      // إذا عمل أقل من 8 ساعات، يحصل على نسبة من الراتب اليومي
-      const hourlyRate = dailySalary / 8;
+      // لو أقل من 6.5 ساعة، يتحسب على الساعات الفعلية
       amountToAdd = hoursWorked * hourlyRate;
     }
 
-    // تحديث ميزانية الموظف
+    const finalAmount = action === "add" ? Math.round(amountToAdd) : -Math.round(amountToAdd);
+
+    // تحديث الميزانية
     await prisma.employee.update({
       where: { id: employeeId },
       data: {
         budget: {
-          increment: Math.round(amountToAdd),
+          increment: finalAmount,
         },
       },
     });

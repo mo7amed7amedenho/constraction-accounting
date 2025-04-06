@@ -3,7 +3,7 @@ import { Table, Input, Button, Spin, Modal, Select, DatePicker } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { FaTrashAlt, FaPen } from "react-icons/fa";
 import { useState } from "react";
-import { Printer, FileDown } from "lucide-react";
+import { Printer } from "lucide-react";
 import React from "react";
 import { Card } from "@/components/ui/card";
 import NewAttendance from "./NewAttendance";
@@ -34,7 +34,6 @@ interface AttendanceRecord {
 
 export default function AttendancePage() {
   const [searchText, setSearchText] = useState("");
-  // const [isModalOpen, setIsModalOpen] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState<
     AttendanceRecord[]
   >([]);
@@ -51,21 +50,32 @@ export default function AttendancePage() {
   const [dateRange, setDateRange] = useState<
     [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
   >(null);
+  const [isDateSelected, setIsDateSelected] = useState(false);
 
   const queryClient = useQueryClient();
 
-  // جلب بيانات الحضور من API
   const fetchAttendance = async () => {
-    const res = await axios.get("/api/attendance");
+    if (!dateRange || !dateRange[0] || !dateRange[1]) {
+      throw new Error("يرجى اختيار نطاق زمني أولاً");
+    }
+    const startDate = dateRange[0].format("YYYY-MM-DD");
+    const endDate = dateRange[1].format("YYYY-MM-DD");
+    const res = await axios.get(
+      `/api/attendance?startDate=${startDate}&endDate=${endDate}`
+    );
     return res.data;
   };
 
-  const { data: attendanceData = [], isLoading } = useQuery({
-    queryKey: ["attendance"],
+  const {
+    data: attendanceData = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["attendance", dateRange],
     queryFn: fetchAttendance,
+    enabled: isDateSelected,
   });
 
-  // تحديث قائمة الحضور عند جلب البيانات
   React.useEffect(() => {
     if (attendanceData && attendanceData.length > 0) {
       setAttendanceRecords(attendanceData);
@@ -73,14 +83,6 @@ export default function AttendancePage() {
     }
   }, [attendanceData]);
 
-  // دالة البحث عن سجلات الحضور
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toLowerCase();
-    setSearchText(value);
-    applyFilters(value, filterStatus, dateRange);
-  };
-
-  // تطبيق الفلاتر على سجلات الحضور
   const applyFilters = (
     search: string,
     status: string,
@@ -88,16 +90,14 @@ export default function AttendancePage() {
   ) => {
     let filtered = [...attendanceRecords];
 
-    // فلتر البحث
     if (search) {
-      filtered = filtered.filter(
+      Hannah: filtered = filtered.filter(
         (record) =>
-          record.employee.name.toLowerCase().includes(search) ||
+          record.employee.name.toLowerCase().includes(search.toLowerCase()) ||
           record.employee.nationalId.includes(search)
       );
     }
 
-    // فلتر الحالة
     if (status !== "all") {
       filtered = filtered.filter((record) => {
         const checkInTime = new Date(record.checkIn);
@@ -107,7 +107,6 @@ export default function AttendancePage() {
           case "present":
             return checkInTime && checkOutTime;
           case "late":
-            // تحديد التأخير (مثال: الحضور بعد الساعة 8 صباحًا)
             return (
               checkInTime &&
               checkInTime.getHours() >= 8 &&
@@ -116,7 +115,6 @@ export default function AttendancePage() {
           case "absent":
             return !checkInTime;
           case "early_leave":
-            // تحديد الخروج المبكر (مثال: الخروج قبل الساعة 3 مساءً)
             return checkOutTime && checkOutTime.getHours() < 15;
           default:
             return true;
@@ -124,11 +122,9 @@ export default function AttendancePage() {
       });
     }
 
-    // فلتر النطاق الزمني
     if (dates && dates[0] && dates[1]) {
       const startDate = dates[0].startOf("day");
       const endDate = dates[1].endOf("day");
-
       filtered = filtered.filter((record) => {
         const recordDate = dayjs(record.date);
         return recordDate.isAfter(startDate) && recordDate.isBefore(endDate);
@@ -138,7 +134,28 @@ export default function AttendancePage() {
     setFilteredRecords(filtered);
   };
 
-  // دالة الحذف باستخدام useMutation
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchText(value);
+    applyFilters(value, filterStatus, dateRange);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setFilterStatus(value);
+    applyFilters(searchText, value, dateRange);
+  };
+
+  const handleDateRangeChange = (dates: any) => {
+    setDateRange(dates);
+    if (dates && dates[0] && dates[1]) {
+      setIsDateSelected(true);
+      refetch();
+    } else {
+      setIsDateSelected(false);
+    }
+    applyFilters(searchText, filterStatus, dates);
+  };
+
   const deleteAttendance = async (id: number) => {
     const response = await axios.delete(`/api/attendance/${id}`);
     return response.data;
@@ -148,7 +165,7 @@ export default function AttendancePage() {
     mutationFn: deleteAttendance,
     onSuccess: () => {
       toast.success("تم حذف سجل الحضور بنجاح!");
-      queryClient.invalidateQueries({ queryKey: ["attendance"] }); // تحديث البيانات تلقائيًا
+      queryClient.invalidateQueries({ queryKey: ["attendance", dateRange] });
       setIsDeleteModalVisible(false);
     },
     onError: (error: any) => {
@@ -163,16 +180,12 @@ export default function AttendancePage() {
     setIsDeleteModalVisible(true);
   };
 
-  // دالة تنفيذ الحذف
   const handleDelete = () => {
     if (selectedRecord?.id) {
       deleteMutation.mutate(selectedRecord.id);
-    } else {
-      console.error("لم يتم العثور على معرف سجل الحضور.");
     }
   };
 
-  // دالة الطباعة
   const handlePrint = () => {
     const printWindow = window.open("", "_blank", "width=900,height=600");
     if (printWindow) {
@@ -444,31 +457,11 @@ export default function AttendancePage() {
     </script>
   </body>
 </html>
-
       `);
       printWindow.document.close();
     }
   };
 
-  // تصدير البيانات إلى Excel
-  // const exportToExcel = () => {
-  //   // هنا يمكن إضافة كود لتصدير البيانات إلى Excel
-  //   toast.success("تم تصدير البيانات بنجاح!");
-  // };
-
-  // تغيير فلتر الحالة
-  const handleStatusChange = (value: string) => {
-    setFilterStatus(value);
-    applyFilters(searchText, value, dateRange);
-  };
-
-  // تغيير نطاق التاريخ
-  const handleDateRangeChange = (dates: any) => {
-    setDateRange(dates);
-    applyFilters(searchText, filterStatus, dates);
-  };
-
-  // تعريف أعمدة الجدول
   const columns = [
     {
       title: "#",
@@ -483,11 +476,7 @@ export default function AttendancePage() {
       sorter: (a: any, b: any) =>
         a.employee.name.localeCompare(b.employee.name),
     },
-    {
-      title: "الوظيفة",
-      dataIndex: ["employee", "jobTitle"],
-      key: "jobTitle",
-    },
+    { title: "الوظيفة", dataIndex: ["employee", "jobTitle"], key: "jobTitle" },
     {
       title: "التاريخ",
       dataIndex: "date",
@@ -518,7 +507,6 @@ export default function AttendancePage() {
             })
           : "--",
     },
-
     {
       title: "ع.س.إضافية",
       key: "extraHours",
@@ -539,13 +527,12 @@ export default function AttendancePage() {
         const checkInTime = new Date(record.checkIn);
         let status = "حاضر";
         let color = "green";
-
         if (!record.checkOut) {
           status = "لم يسجل خروج";
-          color = "orange";
+          color = "red";
         } else if (
           checkInTime.getHours() >= 8 &&
-          checkInTime.getMinutes() > 0
+          checkInTime.getMinutes() > 45
         ) {
           status = "متأخر";
           color = "orange";
@@ -556,7 +543,6 @@ export default function AttendancePage() {
             color = "purple";
           }
         }
-
         return (
           <span
             style={{
@@ -579,7 +565,6 @@ export default function AttendancePage() {
         <div className="flex space-x-2 justify-center">
           <Button
             type="text"
-            color="blue"
             icon={<FaPen className="text-blue-500" />}
             onClick={() => {
               setSelectedRecord(record);
@@ -588,7 +573,6 @@ export default function AttendancePage() {
           />
           <Button
             type="text"
-            color="red"
             icon={<FaTrashAlt className="text-red-500" />}
             onClick={() => showDeleteConfirm(record)}
           />
@@ -596,6 +580,21 @@ export default function AttendancePage() {
       ),
     },
   ];
+
+  if (!isDateSelected) {
+    return (
+      <div className="flex flex-col justify-center items-center p-6">
+        <h2 className="text-xl mb-4">
+          يرجى اختيار نطاق زمني لعرض سجلات الحضور
+        </h2>
+        <RangePicker
+          className="w-[300px]"
+          placeholder={["من تاريخ", "إلى تاريخ"]}
+          onChange={handleDateRangeChange}
+        />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -610,10 +609,8 @@ export default function AttendancePage() {
       <h1 className="text-3xl font-semibold text-center mb-6">
         إدارة الحضور والانصراف
       </h1>
-
       <Card className="p-4 shadow-lg rounded-xl">
         <div className="flex flex-wrap items-center gap-4">
-          {/* حقل البحث */}
           <div className="min-w-[220px] flex-1">
             <Input
               placeholder="بحث باسم الموظف أو الرقم القومي"
@@ -623,8 +620,6 @@ export default function AttendancePage() {
               className="w-full"
             />
           </div>
-
-          {/* تحديد الحالة */}
           <div className="min-w-[150px]">
             <Select
               placeholder="الحالة"
@@ -638,18 +633,14 @@ export default function AttendancePage() {
               <Option value="early_leave">خروج مبكر</Option>
             </Select>
           </div>
-
-          {/* تحديد التاريخ */}
           <div className="min-w-[300px]">
             <RangePicker
               className="w-full"
               placeholder={["من تاريخ", "إلى تاريخ"]}
+              value={dateRange}
               onChange={handleDateRangeChange}
-              style={{ fontSize: "12px" }}
             />
           </div>
-
-          {/* الأزرار */}
           <div className="flex gap-2 ml-auto">
             <Button
               type="primary"
@@ -658,14 +649,12 @@ export default function AttendancePage() {
             >
               تسجيل حضور جديد
             </Button>
-
             <Button icon={<Printer size={16} />} onClick={handlePrint}>
               طباعة
             </Button>
           </div>
         </div>
       </Card>
-
       <Table
         dataSource={filteredRecords}
         columns={columns}
@@ -674,11 +663,9 @@ export default function AttendancePage() {
         scroll={{ x: "max-content" }}
         className="mt-4"
       />
-
       {isNewOpen && (
         <NewAttendance isOpen={isNewOpen} onClose={() => setIsNewOpen(false)} />
       )}
-
       {isEditOpen && selectedRecord && (
         <EditAttendance
           isOpen={isEditOpen}
@@ -686,7 +673,6 @@ export default function AttendancePage() {
           attendanceRecord={selectedRecord}
         />
       )}
-
       <Modal
         title="تأكيد الحذف"
         open={isDeleteModalVisible}
@@ -720,10 +706,7 @@ export default function AttendancePage() {
                 {selectedRecord.checkOut
                   ? new Date(selectedRecord.checkOut).toLocaleTimeString(
                       "ar-EG",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }
+                      { hour: "2-digit", minute: "2-digit" }
                     )
                   : "--"}
               </p>

@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button, Input, Select, DatePicker, TimePicker } from "antd";
+import { Button, Input, AutoComplete, DatePicker, TimePicker } from "antd";
 import { toast } from "react-hot-toast";
 import dayjs from "dayjs";
 
@@ -37,10 +37,10 @@ export default function NewAttendance({ isOpen, onClose }: NewAttendanceProps) {
   });
 
   const [errors, setErrors] = useState<any>({});
+  const [searchValue, setSearchValue] = useState("");
 
   const queryClient = useQueryClient();
 
-  // جلب قائمة الموظفين
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["employees"],
     queryFn: async () => {
@@ -76,11 +76,18 @@ export default function NewAttendance({ isOpen, onClose }: NewAttendanceProps) {
       checkOut: null,
       notes: "",
     });
+    setSearchValue("");
     setErrors({});
   };
 
-  const handleEmployeeChange = (value: string) => {
+  const handleEmployeeSelect = (value: string) => {
     setForm((prevForm) => ({ ...prevForm, employeeId: value }));
+    const selectedEmployee = employees.find((emp) => emp.id.toString() === value);
+    setSearchValue(selectedEmployee ? selectedEmployee.name : "");
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
   };
 
   const handleDateChange = (date: dayjs.Dayjs | null) => {
@@ -111,23 +118,50 @@ export default function NewAttendance({ isOpen, onClose }: NewAttendanceProps) {
     return formErrors;
   };
 
+  const calculateAttendanceStatus = (checkIn: dayjs.Dayjs, checkOut: dayjs.Dayjs | null) => {
+    if (!checkOut) return "غير محدد";
+    const hoursWorked = checkOut.diff(checkIn, "hour", true); // حساب الساعات بدقة
+    if (hoursWorked > 8) return "زيادة";
+    if (hoursWorked >= 6.5) return "كامل";
+    return "ناقص";
+  };
+
   const handleSubmit = () => {
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-    } else {
-      // تحضير البيانات للإرسال
-      const attendanceData = {
-        employeeId: parseInt(form.employeeId),
-        date: form.date.format("YYYY-MM-DD"),
-        checkIn: form.checkIn.format(),
-        checkOut: form.checkOut ? form.checkOut.format() : null,
-        notes: form.notes || null,
-      };
-
-      mutation.mutate(attendanceData);
+      return;
     }
+
+    // تحقق من أن وقت الانصراف ليس قبل وقت الحضور
+    if (form.checkOut && form.checkOut.isBefore(form.checkIn)) {
+      toast.error("وقت الانصراف لا يمكن أن يكون قبل وقت الحضور!");
+      setErrors({ checkOut: "وقت الانصراف غير صالح" });
+      return;
+    }
+
+    const attendanceStatus = calculateAttendanceStatus(form.checkIn, form.checkOut);
+
+    const attendanceData = {
+      employeeId: parseInt(form.employeeId),
+      date: form.date.format("YYYY-MM-DD"),
+      checkIn: form.checkIn.format(),
+      checkOut: form.checkOut ? form.checkOut.format() : null,
+      notes: form.notes || null,
+      attendanceStatus, // إضافة حالة الحضور
+    };
+
+    mutation.mutate(attendanceData);
   };
+
+  const options = employees
+    .filter((employee) =>
+      employee.name.toLowerCase().includes(searchValue.toLowerCase())
+    )
+    .map((employee) => ({
+      value: employee.id.toString(),
+      label: employee.name,
+    }));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -140,21 +174,17 @@ export default function NewAttendance({ isOpen, onClose }: NewAttendanceProps) {
 
         <div className="grid grid-cols-2 gap-4 py-4">
           <div className="grid gap-2">
-            <Select
+            <AutoComplete
               id="employee"
-              placeholder="اختر الموظف"
-              value={form.employeeId || undefined}
-              onChange={handleEmployeeChange}
+              placeholder="ابحث عن الموظف"
+              value={searchValue}
+              options={options}
+              onSelect={handleEmployeeSelect}
+              onSearch={handleSearchChange}
               status={errors.employeeId ? "error" : ""}
               className="w-full"
-              getPopupContainer={(trigger) => trigger.parentElement}
-            >
-              {employees.map((employee) => (
-                <Select.Option key={employee.id} value={employee.id.toString()}>
-                  {employee.name}
-                </Select.Option>
-              ))}
-            </Select>
+              getPopupContainer={(trigger) => trigger.parentElement || document.body}
+            />
             {errors.employeeId && (
               <p className="text-red-500 text-sm">{errors.employeeId}</p>
             )}
@@ -183,9 +213,7 @@ export default function NewAttendance({ isOpen, onClose }: NewAttendanceProps) {
               placeholder="وقت الحضور"
               className="w-full"
               format="HH:mm"
-              getPopupContainer={(trigger) =>
-                trigger.parentElement || document.body
-              }
+              getPopupContainer={(trigger) => trigger.parentElement || document.body}
             />
             {errors.checkIn && (
               <p className="text-red-500 text-sm">{errors.checkIn}</p>
@@ -198,12 +226,14 @@ export default function NewAttendance({ isOpen, onClose }: NewAttendanceProps) {
               value={form.checkOut}
               placeholder="وقت الخروج"
               onChange={handleCheckOutChange}
+              status={errors.checkOut ? "error" : ""}
               className="w-full"
               format="HH:mm"
-              getPopupContainer={(trigger) =>
-                trigger.parentElement || document.body
-              }
+              getPopupContainer={(trigger) => trigger.parentElement || document.body}
             />
+            {errors.checkOut && (
+              <p className="text-red-500 text-sm">{errors.checkOut}</p>
+            )}
           </div>
         </div>
         <div className="grid gap-2">
