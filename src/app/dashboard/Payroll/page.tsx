@@ -1,12 +1,20 @@
-// Payroll/page.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button, Input, Modal, Select, Table, Spin } from "antd";
+import {
+  Button,
+  Input,
+  Modal,
+  Select,
+  Table,
+  Skeleton,
+  DatePicker,
+} from "antd";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { FinancialChart } from "@/components/ui/cyrclechart";
+import dynamic from "next/dynamic";
 import { DollarSign, PlusCircle, FileText, Search } from "lucide-react";
 import NewPayroll from "./NewPayroll";
 import NewAdvance from "./NewAdvance";
@@ -14,10 +22,14 @@ import NewDeduction from "./NewDeduction";
 import NewBonus from "./NewBonus";
 import TransactionHistory from "./TransactionHistory";
 import EmployeeReport from "./EmployeeReport";
+import moment from "moment";
+import { ApexOptions } from "apexcharts";
 
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
-// تعريف أنواع البيانات
+const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+
 interface Custody {
   id: string;
   name: string;
@@ -38,6 +50,7 @@ interface Employee {
 interface Payroll {
   id: string;
   netSalary: number;
+  paidAmount: number;
 }
 
 interface Advance {
@@ -62,7 +75,6 @@ interface ChartData {
 }
 
 export default function PayrollPage() {
-  // تعريف الحالات مع الأنواع
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState<boolean>(false);
   const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState<boolean>(false);
   const [isDeductionModalOpen, setIsDeductionModalOpen] =
@@ -75,9 +87,20 @@ export default function PayrollPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null
   );
+  const [dateRange, setDateRange] = useState<
+    [moment.Moment | null, moment.Moment | null] | null
+  >(null);
+  const [darkMode, setDarkMode] = useState<boolean>(false); // حالة الدارك مود
   const queryClient = useQueryClient();
 
-  // دالة مساعدة لجلب البيانات مع معالجة الأخطاء
+  // التحقق من تفضيلات المستخدم للدارك مود عند التحميل
+  useEffect(() => {
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+    setDarkMode(prefersDark);
+  }, []);
+
   const fetchData = async <T,>(endpoint: string): Promise<T[]> => {
     try {
       const res = await axios.get(`/api/${endpoint}`);
@@ -88,7 +111,6 @@ export default function PayrollPage() {
     }
   };
 
-  // جلب البيانات باستخدام useQuery
   const { data: custodies = [], isLoading: custodiesLoading } = useQuery<
     Custody[]
   >({
@@ -106,32 +128,31 @@ export default function PayrollPage() {
   const { data: payrolls = [], isLoading: payrollsLoading } = useQuery<
     Payroll[]
   >({
-    queryKey: ["payrolls"],
+    queryKey: ["payrolls", dateRange],
     queryFn: () => fetchData<Payroll>("payroll"),
   });
 
   const { data: advances = [], isLoading: advancesLoading } = useQuery<
     Advance[]
   >({
-    queryKey: ["advances"],
+    queryKey: ["advances", dateRange],
     queryFn: () => fetchData<Advance>("advances"),
   });
 
   const { data: deductions = [], isLoading: deductionsLoading } = useQuery<
     Deduction[]
   >({
-    queryKey: ["deductions"],
+    queryKey: ["deductions", dateRange],
     queryFn: () => fetchData<Deduction>("deductions"),
   });
 
   const { data: bonuses = [], isLoading: bonusesLoading } = useQuery<Bonus[]>({
-    queryKey: ["bonuses"],
+    queryKey: ["bonuses", dateRange],
     queryFn: () => fetchData<Bonus>("bonuses"),
   });
 
-  // حساب الإجماليات مع تحويل القيم إلى أرقام
   const totalPayroll = payrolls.reduce(
-    (sum, payroll) => sum + Number(payroll.netSalary || 0),
+    (sum, payroll) => sum + Number(payroll.paidAmount || 0),
     0
   );
   const totalAdvances = advances.reduce(
@@ -147,7 +168,6 @@ export default function PayrollPage() {
     0
   );
 
-  // بيانات المخطط الدائري
   const chartData: ChartData[] = [
     { name: "المرتبات", value: totalPayroll, color: "#0088FE" },
     { name: "السلف", value: totalAdvances, color: "#00C49F" },
@@ -155,12 +175,49 @@ export default function PayrollPage() {
     { name: "المكافآت", value: totalBonuses, color: "#FF8042" },
   ];
 
-  // تصفية الموظفين بناءً على البحث
+  const areaChartOptions: ApexOptions = {
+    chart: {
+      type: "area",
+      height: "100%",
+      toolbar: { show: false },
+      background: "transparent",
+    },
+    dataLabels: { enabled: false },
+    stroke: { curve: "smooth", width: 2 },
+    xaxis: {
+      categories: chartData.map((item) => item.name),
+      labels: {
+        style: {
+          fontSize: "12px",
+        },
+      },
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: "12px",
+        },
+      },
+    },
+    colors: chartData.map((item) => item.color),
+    fill: {
+      type: "gradient",
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.3,
+      },
+    },
+  };
+
+  const areaChartSeries = [
+    { name: "القيمة", data: chartData.map((item) => item.value) },
+  ];
+
   const filteredEmployees = employees.filter((employee) =>
     employee.name.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  // تعريف أعمدة الجدول
   const columns = [
     { title: "الاسم", dataIndex: "name", key: "name" },
     { title: "الوظيفة", dataIndex: "jobTitle", key: "jobTitle" },
@@ -195,13 +252,54 @@ export default function PayrollPage() {
   ];
 
   return (
-    <div className="container mx-auto p-6 rtl min-h-screen">
-      {/* العنوان الرئيسي */}
-      <h1 className="text-3xl font-bold mb-8 text-right">
-        إدارة المرتبات والسلف
-      </h1>
+    <div className={`container mx-auto p-6 rtl min-h-screen`}>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-right">إدارة المرتبات والسلف</h1>
+      </div>
 
-      {/* الإحصائيات */}
+      <div className="mb-6 flex items-center justify-between">
+        <RangePicker
+          onChange={(dates) =>
+            setDateRange(
+              dates as [moment.Moment | null, moment.Moment | null] | null
+            )
+          }
+          placeholder={["تاريخ البداية", "تاريخ النهاية"]}
+          style={{ width: "100%", maxWidth: 400 }}
+        />
+        <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+          {[
+            { label: "صرف مرتبات", onClick: () => setIsPayrollModalOpen(true) },
+            { label: "صرف سلفة", onClick: () => setIsAdvanceModalOpen(true) },
+            {
+              label: "إضافة خصم",
+              onClick: () => setIsDeductionModalOpen(true),
+            },
+            { label: "إضافة مكافأة", onClick: () => setIsBonusModalOpen(true) },
+          ].map((btn) => (
+            <Button
+              key={btn.label}
+              type="primary"
+              size="middle"
+              icon={<PlusCircle size={16} />}
+              onClick={btn.onClick}
+              className="flex items-center gap-2"
+            >
+              {btn.label}
+            </Button>
+          ))}
+          {/* <Button
+          type="default"
+          size="large"
+          icon={<FileText size={16} />}
+          onClick={() => setIsHistoryModalOpen(true)}
+          className="flex items-center gap-2"
+        >
+          سجل العمليات
+        </Button> */}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
           {
@@ -227,7 +325,7 @@ export default function PayrollPage() {
         ].map((stat) => (
           <Card
             key={stat.title}
-            className="shadow-md hover:shadow-lg transition-shadow"
+            className={`shadow-md hover:shadow-lg transition-shadow`}
           >
             <CardHeader className="pb-2">
               <CardTitle className="flex justify-between items-center text-lg">
@@ -237,9 +335,9 @@ export default function PayrollPage() {
             </CardHeader>
             <CardContent>
               {stat.loading ? (
-                <Spin />
+                <Skeleton active paragraph={{ rows: 1 }} />
               ) : (
-                <div className="text-2xl font-semibold ">
+                <div className="text-2xl font-semibold">
                   {stat.value.toLocaleString()} ج.م
                 </div>
               )}
@@ -248,22 +346,21 @@ export default function PayrollPage() {
         ))}
       </div>
 
-      {/* المخطط واختيار العهدة */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="md:col-span-1 shadow-md">
+        <Card className={`md:col-span-1 shadow-md `}>
           <CardHeader>
             <CardTitle className="text-lg">اختيار العهدة</CardTitle>
           </CardHeader>
           <CardContent>
             {custodiesLoading ? (
-              <Spin />
+              <Skeleton active paragraph={{ rows: 2 }} />
             ) : (
               <Select
                 placeholder="اختر العهدة"
                 style={{ width: "100%" }}
                 onChange={(value) => {
                   const custody = custodies.find((c) => c.id === value);
-                  setSelectedCustody(custody || null);
+                  setSelectedCustody(custody ? { ...custody } : null);
                 }}
               >
                 {custodies.map((custody) => (
@@ -288,24 +385,26 @@ export default function PayrollPage() {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2 shadow-md">
+        <Card className={`md:col-span-2 shadow-md`}>
           <CardHeader>
             <CardTitle className="text-lg">توزيع المصروفات المالية</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center">
-            {chartData.some((item) => item.value > 0) ? (
-              <FinancialChart
-                totalAmount={chartData.reduce(
-                  (acc, item) => acc + item.value,
-                  0
-                )}
-                remainingAmount={
-                  chartData.find((item) => item.name === "Remaining")?.value ||
-                  0
-                }
+          <CardContent className="p-0 h-[400px] w-full">
+            {payrollsLoading ||
+            advancesLoading ||
+            deductionsLoading ||
+            bonusesLoading ? (
+              <Skeleton active paragraph={{ rows: 4 }} />
+            ) : chartData.some((item) => item.value > 0) ? (
+              <ApexChart
+                options={areaChartOptions}
+                series={areaChartSeries}
+                type="area"
+                height="100%"
+                width="100%"
               />
             ) : (
-              <div className="text-center">
+              <div className="text-center h-full flex items-center justify-center">
                 لا توجد بيانات كافية لعرض المخطط
               </div>
             )}
@@ -313,38 +412,7 @@ export default function PayrollPage() {
         </Card>
       </div>
 
-      {/* أزرار العمليات */}
-      <div className="flex flex-wrap gap-4 mb-8 justify-center md:justify-start">
-        {[
-          { label: "صرف مرتبات", onClick: () => setIsPayrollModalOpen(true) },
-          { label: "صرف سلفة", onClick: () => setIsAdvanceModalOpen(true) },
-          { label: "إضافة خصم", onClick: () => setIsDeductionModalOpen(true) },
-          { label: "إضافة مكافأة", onClick: () => setIsBonusModalOpen(true) },
-        ].map((btn) => (
-          <Button
-            key={btn.label}
-            type="primary"
-            size="large"
-            icon={<PlusCircle size={16} />}
-            onClick={btn.onClick}
-            className="flex items-center gap-2"
-          >
-            {btn.label}
-          </Button>
-        ))}
-        <Button
-          type="default"
-          size="large"
-          icon={<FileText size={16} />}
-          onClick={() => setIsHistoryModalOpen(true)}
-          className="flex items-center gap-2"
-        >
-          سجل العمليات
-        </Button>
-      </div>
-
-      {/* جدول الموظفين */}
-      <Card className="shadow-md">
+      <Card className={`shadow-md`}>
         <CardHeader>
           <CardTitle className="flex justify-between items-center text-lg">
             <span>قائمة الموظفين</span>
@@ -358,9 +426,7 @@ export default function PayrollPage() {
         </CardHeader>
         <CardContent>
           {employeesLoading ? (
-            <div className="flex justify-center p-4">
-              <Spin size="large" />
-            </div>
+            <Skeleton active paragraph={{ rows: 6 }} />
           ) : (
             <Table
               dataSource={filteredEmployees}
@@ -368,13 +434,14 @@ export default function PayrollPage() {
               rowKey="id"
               pagination={{ pageSize: 10 }}
               scroll={{ x: "max-content" }}
-              className="border rounded-lg"
+              className={`border rounded-lg ${
+                darkMode ? "ant-table-dark" : ""
+              }`}
             />
           )}
         </CardContent>
       </Card>
 
-      {/* المودالات */}
       <Modal
         title="صرف مرتبات"
         open={isPayrollModalOpen}
@@ -383,7 +450,8 @@ export default function PayrollPage() {
         width={700}
       >
         <NewPayroll
-          custody={selectedCustody}
+          custody={selectedCustody ? { ...selectedCustody } : null}
+          dateRange={dateRange}
           onSuccess={() => {
             setIsPayrollModalOpen(false);
             queryClient.invalidateQueries({
@@ -401,7 +469,7 @@ export default function PayrollPage() {
         width={600}
       >
         <NewAdvance
-          custody={selectedCustody}
+          custody={selectedCustody ? { ...selectedCustody } : null}
           onSuccess={() => {
             setIsAdvanceModalOpen(false);
             queryClient.invalidateQueries({
@@ -436,7 +504,7 @@ export default function PayrollPage() {
         width={600}
       >
         <NewBonus
-          custody={selectedCustody}
+          custody={selectedCustody ? { ...selectedCustody } : null}
           onSuccess={() => {
             setIsBonusModalOpen(false);
             queryClient.invalidateQueries({

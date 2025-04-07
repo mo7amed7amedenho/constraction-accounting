@@ -1,4 +1,3 @@
-//Payroll/TransactionHistory.tsx
 "use client";
 import { useState } from "react";
 import {
@@ -111,7 +110,6 @@ export default function TransactionHistory() {
   const handleEdit = (record: any) => {
     setSelectedRecord(record);
 
-    // تهيئة النموذج بناءً على نوع السجل
     switch (activeTab) {
       case "payrolls":
         form.setFieldsValue({
@@ -121,6 +119,7 @@ export default function TransactionHistory() {
           bonuses: record.bonuses,
           deductions: record.deductions,
           advances: record.advances,
+          custody: record.custody, // إضافة العهدة
         });
         break;
       case "advances":
@@ -168,6 +167,7 @@ export default function TransactionHistory() {
             bonuses: values.bonuses,
             deductions: values.deductions,
             advances: values.advances,
+            custody: values.custody, // إضافة العهدة
             totalSalary: values.dailySalary * values.daysWorked,
             netSalary:
               values.dailySalary * values.daysWorked +
@@ -205,8 +205,10 @@ export default function TransactionHistory() {
     });
   };
 
-  const handleDeleteRecord = () => {
+  const handleDeleteRecord = async () => {
     let endpoint = "";
+    let amountToRestore = 0; // القيمة التي سيتم إرجاعها إلى العهدة
+    let employeeId = selectedRecord?.employeeId; // معرف الموظف
 
     switch (activeTab) {
       case "payrolls":
@@ -214,16 +216,58 @@ export default function TransactionHistory() {
         break;
       case "advances":
         endpoint = "advances";
+        amountToRestore = selectedRecord.amount; // استرجاع مبلغ السلفة
         break;
       case "deductions":
         endpoint = "deductions";
+        amountToRestore = selectedRecord.amount; // استرجاع مبلغ الخصم
         break;
       case "bonuses":
         endpoint = "bonuses";
+        amountToRestore = -selectedRecord.amount; // طرح المكافأة لأنها إضافة
         break;
     }
 
-    deleteMutation.mutate({ endpoint, id: selectedRecord.id });
+    try {
+      // إذا كان السجل ليس مرتباً (payrolls)، قم بتحديث العهدة في جدول payrolls
+      if (activeTab !== "payrolls" && amountToRestore !== 0 && employeeId) {
+        // البحث عن أحدث سجل مرتب للموظف
+        const latestPayroll = payrolls.find(
+          (p: any) => p.employeeId === employeeId
+        );
+
+        if (latestPayroll) {
+          // تحديث العهدة بإضافة القيمة المستعادة
+          const updatedCustody = (latestPayroll.custody || 0) + amountToRestore;
+
+          // إرسال طلب تحديث إلى الـ API
+          await axios.put(`/api/payroll/${latestPayroll.id}`, {
+            ...latestPayroll,
+            custody: updatedCustody,
+            advances:
+              activeTab === "advances"
+                ? latestPayroll.advances - selectedRecord.amount
+                : latestPayroll.advances,
+            deductions:
+              activeTab === "deductions"
+                ? latestPayroll.deductions - selectedRecord.amount
+                : latestPayroll.deductions,
+            bonuses:
+              activeTab === "bonuses"
+                ? latestPayroll.bonuses - selectedRecord.amount
+                : latestPayroll.bonuses,
+          });
+
+          // تحديث الكاش
+          queryClient.invalidateQueries({ queryKey: ["payrolls"] });
+        }
+      }
+
+      // تنفيذ عملية الحذف بعد التحديث
+      deleteMutation.mutate({ endpoint, id: selectedRecord.id });
+    } catch (error: any) {
+      toast.error("حدث خطأ أثناء معالجة الحذف وإعادة القيمة إلى العهدة");
+    }
   };
 
   // أعمدة جدول المرتبات
@@ -278,6 +322,12 @@ export default function TransactionHistory() {
       dataIndex: "advances",
       key: "advances",
       render: (text: number) => `${Number(text).toLocaleString()} ج.م`,
+    },
+    {
+      title: "العهدة",
+      dataIndex: "custody",
+      key: "custody",
+      render: (text: number) => `${Number(text || 0).toLocaleString()} ج.م`,
     },
     {
       title: "صافي الراتب",
@@ -509,7 +559,7 @@ export default function TransactionHistory() {
                 style={{ width: "100%" }}
                 min={1}
                 formatter={(value) => `${value} ج.م`}
-                parser={(value: string | undefined): 1 => (value ? 1 : 1)}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
               />
             </Form.Item>
             <Form.Item
@@ -524,7 +574,7 @@ export default function TransactionHistory() {
                 style={{ width: "100%" }}
                 min={0}
                 formatter={(value) => `${value} ج.م`}
-                parser={(value: string | undefined): 1 => (value ? 1 : 1)}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
               />
             </Form.Item>
             <Form.Item name="deductions" label="الخصومات" initialValue={0}>
@@ -532,7 +582,7 @@ export default function TransactionHistory() {
                 style={{ width: "100%" }}
                 min={0}
                 formatter={(value) => `${value} ج.م`}
-                parser={(value: string | undefined): 1 => (value ? 1 : 1)}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
               />
             </Form.Item>
             <Form.Item name="advances" label="السلف" initialValue={0}>
@@ -540,7 +590,15 @@ export default function TransactionHistory() {
                 style={{ width: "100%" }}
                 min={0}
                 formatter={(value) => `${value} ج.م`}
-                parser={(value: string | undefined): 1 => (value ? 1 : 1)}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
+              />
+            </Form.Item>
+            <Form.Item name="custody" label="العهدة" initialValue={0}>
+              <InputNumber
+                style={{ width: "100%" }}
+                min={0}
+                formatter={(value) => `${value} ج.م`}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
               />
             </Form.Item>
           </Form>
@@ -557,7 +615,7 @@ export default function TransactionHistory() {
                 style={{ width: "100%" }}
                 min={1}
                 formatter={(value) => `${value} ج.م`}
-                parser={(value: string | undefined): 1 => (value ? 1 : 1)}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
               />
             </Form.Item>
             <Form.Item
@@ -592,7 +650,7 @@ export default function TransactionHistory() {
                 style={{ width: "100%" }}
                 min={1}
                 formatter={(value) => `${value} ج.م`}
-                parser={(value: string | undefined): 1 => (value ? 1 : 1)}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
               />
             </Form.Item>
             <Form.Item
@@ -616,7 +674,7 @@ export default function TransactionHistory() {
                 style={{ width: "100%" }}
                 min={1}
                 formatter={(value) => `${value} ج.م`}
-                parser={(value: string | undefined): 1 => (value ? 1 : 1)}
+                parser={(value: string | undefined) => Number(value?.replace(" ج.م", "") || 0)}
               />
             </Form.Item>
             <Form.Item
@@ -750,8 +808,7 @@ export default function TransactionHistory() {
         ]}
       >
         <p>
-          هل أنت متأكد من رغبتك في حذف هذا السجل؟ لا يمكن التراجع عن هذا
-          الإجراء.
+          هل أنت متأكد من رغبتك في حذف هذا السجل؟ سيتم إرجاع القيمة إلى العهدة.
         </p>
       </Modal>
     </div>

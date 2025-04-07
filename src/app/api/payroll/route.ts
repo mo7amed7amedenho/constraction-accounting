@@ -3,17 +3,16 @@ import prisma from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
-    // استخراج month من query parameters
     const { searchParams } = new URL(req.url);
-    const month = searchParams.get("month");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
-    // إعداد شروط التصفية بناءً على الشهر
     const filter: any = {};
-    if (month) {
-      filter.month = month;
+    if (startDate && endDate) {
+      filter.startDate = { gte: new Date(startDate) };
+      filter.endDate = { lte: new Date(endDate) };
     }
 
-    // جلب سجلات المرتبات مع تطبيق الفلتر
     const payrolls = await prisma.payroll.findMany({
       where: filter,
       include: {
@@ -40,13 +39,11 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { payrolls, custodyId, totalAmount } = body;
 
-    // التحقق من وجود جميع البيانات المطلوبة
     if (!payrolls || !Array.isArray(payrolls) || payrolls.length === 0) {
       return NextResponse.json(
         { error: "بيانات المرتبات غير صحيحة" },
@@ -54,7 +51,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // التحقق من وجود العهدة إذا تم تحديدها
+    // التحقق من رصيد العهدة إذا تم توفير custodyId
     if (custodyId) {
       const custody = await prisma.custody.findUnique({
         where: { id: custodyId },
@@ -67,7 +64,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // التحقق من كفاية رصيد العهدة
       if (custody.remaining < totalAmount) {
         return NextResponse.json(
           { error: "رصيد العهدة غير كافٍ لصرف المرتبات" },
@@ -76,15 +72,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // إنشاء المعاملة لضمان تنفيذ جميع العمليات بنجاح أو فشلها جميعًا
     const result = await prisma.$transaction(async (prismaClient) => {
       const createdPayrolls = [];
 
-      // إنشاء سجلات المرتبات
       for (const payrollData of payrolls) {
         const {
           employeeId,
-          month,
+          startDate,
+          endDate,
           dailySalary,
           daysWorked,
           totalSalary,
@@ -92,9 +87,9 @@ export async function POST(req: NextRequest) {
           deductions,
           advances,
           netSalary,
+          paidAmount,
         } = payrollData;
 
-        // التحقق من وجود الموظف
         const employee = await prismaClient.employee.findUnique({
           where: { id: employeeId },
         });
@@ -103,11 +98,16 @@ export async function POST(req: NextRequest) {
           throw new Error(`الموظف برقم ${employeeId} غير موجود`);
         }
 
-        // إنشاء سجل المرتب
+        // التحقق من أن الـ budget كافٍ للصرف
+        if (employee.budget < paidAmount) {
+          throw new Error(`رصيد الموظف ${employee.name} غير كافٍ للصرف`);
+        }
+
         const payroll = await prismaClient.payroll.create({
           data: {
             employeeId,
-            month,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
             dailySalary,
             daysWorked,
             totalSalary,
@@ -115,23 +115,23 @@ export async function POST(req: NextRequest) {
             deductions: deductions || 0,
             advances: advances || 0,
             netSalary,
+            paidAmount,
           },
         });
 
         createdPayrolls.push(payroll);
 
-        // تحديث رصيد الموظف (إضافة صافي الراتب)
+        // خصم المبلغ المصروف من الـ budget
         await prismaClient.employee.update({
           where: { id: employeeId },
           data: {
             budget: {
-              increment: Number(netSalary),
+              decrement: Number(paidAmount),
             },
           },
         });
       }
 
-      // تحديث رصيد العهدة إذا تم تحديدها
       if (custodyId) {
         await prismaClient.custody.update({
           where: { id: custodyId },
@@ -142,10 +142,9 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // إنشاء مصروف للعهدة
         await prismaClient.expense.create({
           data: {
-            description: `صرف مرتبات لشهر ${payrolls[0].month}`,
+            description: `صرف مرتبات من ${payrolls[0].startDate} إلى ${payrolls[0].endDate}`,
             amount: totalAmount,
             expenseType: "مرتبات",
             responsiblePerson: "إدارة الموارد البشرية",

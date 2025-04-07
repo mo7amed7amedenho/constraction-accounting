@@ -14,8 +14,8 @@ model Employee {
   jobTitle    String
   nationalId  String       @unique
   phoneNumber String       @unique
-  dailySalary Int          @default(0)
-  budget      Int          @default(0)
+  dailySalary Int          @default(0) // تغيير من Int إلى Int
+  budget      Int          @default(0) // تغيير من Int إلى Int
   attendance  Attendance[]
   deductions  Deduction[]
   bonuses     Bonus[]
@@ -29,15 +29,16 @@ model Employee {
 
 /// نموذج الحضور
 model Attendance {
-  id         Int       @id @default(autoincrement())
-  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId Int
-  date       DateTime // تاريخ اليوم
-  checkIn    DateTime // وقت الحضور
-  checkOut   DateTime? // وقت الانصراف (اختياري)
-  notes      String? // ملاحظات إضافية
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            Int       @id @default(autoincrement())
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId    Int
+  date          DateTime // تاريخ اليوم
+  checkIn       DateTime // وقت الحضور
+  checkOut      DateTime? // وقت الانصراف (اختياري)
+  notes         String? // ملاحظات إضافية
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  overtimeHours Int? // عدد الساعات الإضافية
 
   @@index([employeeId, date])
 }
@@ -82,14 +83,16 @@ model Payroll {
   id          Int      @id @default(autoincrement())
   employee    Employee @relation(fields: [employeeId], references: [id])
   employeeId  Int
-  month       String // مثل "2025-04"
-  dailySalary Int
+  startDate   DateTime // بداية الفترة
+  endDate     DateTime // نهاية الفترة
+  dailySalary Decimal
   daysWorked  Int
   totalSalary Decimal
   bonuses     Decimal  @default(0)
   deductions  Decimal  @default(0)
   advances    Decimal  @default(0)
   netSalary   Decimal
+  paidAmount  Decimal  @default(0) // المبلغ اللي تم صرفه فعليًا
   createdAt   DateTime @default(now())
 }
 
@@ -171,7 +174,7 @@ model SupplierInvoice {
 
 model InvoiceItem {
   id        Int             @id @default(autoincrement())
-  invoice   SupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade) // ✅ يتم وضع onDelete هنا
+  invoice   SupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   invoiceId Int
   itemName  String
   quantity  Int

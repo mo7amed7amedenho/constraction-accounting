@@ -45,7 +45,9 @@ export default function NewAdvance({ custody, onSuccess }: AdvanceProps) {
   });
 
   const handleEmployeeChange = (employeeId: number) => {
-    const employee = employees.find((emp: { id: number; }) => emp.id === employeeId);
+    const employee = employees.find(
+      (emp: { id: number }) => emp.id === employeeId
+    );
     setSelectedEmployee(employee);
   };
 
@@ -54,14 +56,14 @@ export default function NewAdvance({ custody, onSuccess }: AdvanceProps) {
       toast.error("يرجى اختيار العهدة أولاً");
       return;
     }
-    
-    form.validateFields().then(values => {
+
+    form.validateFields().then((values) => {
       // التحقق من كفاية رصيد العهدة
       if (values.amount > custody.remaining) {
         toast.error("رصيد العهدة غير كافٍ لصرف السلفة");
         return;
       }
-      
+
       createAdvanceMutation.mutate({
         employeeId: values.employeeId,
         amount: values.amount,
@@ -95,9 +97,13 @@ export default function NewAdvance({ custody, onSuccess }: AdvanceProps) {
         </Form.Item>
 
         {selectedEmployee && (
-          <div className="bg-gray-100 p-3 rounded-md mb-4">
-            <p><strong>الراتب اليومي:</strong> {selectedEmployee.dailySalary} ج.م</p>
-            <p><strong>الرصيد الحالي:</strong> {selectedEmployee.budget} ج.م</p>
+          <div className="p-3 rounded-md mb-4 flex items-center gap-3">
+            <p>
+              <strong>الراتب اليومي:</strong> {selectedEmployee.dailySalary} ج.م
+            </p>
+            <p>
+              <strong>الرصيد الحالي:</strong> {selectedEmployee.budget} ج.م
+            </p>
           </div>
         )}
 
@@ -110,8 +116,7 @@ export default function NewAdvance({ custody, onSuccess }: AdvanceProps) {
             style={{ width: "100%" }}
             min={1}
             placeholder="أدخل مبلغ السلفة"
-            formatter={(value) => `${value} ج.م`}
-            parser={(value: string | undefined): 1 => value ? 1 : 1}
+            parser={(value: string | undefined): 1 => (value ? 1 : 1)}
           />
         </Form.Item>
 
@@ -147,7 +152,9 @@ export default function NewAdvance({ custody, onSuccess }: AdvanceProps) {
             صرف السلفة
           </Button>
           {!custody && (
-            <div className="text-red-500 mt-2">يرجى اختيار العهدة أولاً من الصفحة الرئيسية</div>
+            <div className="text-red-500 mt-2">
+              يرجى اختيار العهدة أولاً من الصفحة الرئيسية
+            </div>
           )}
         </Form.Item>
       </Form>
