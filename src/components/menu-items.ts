@@ -4,16 +4,24 @@ import {
   Truck,
   Package,
   PaintRoller,
-  List,
+  HandCoins,
   HardHat,
   Settings,
-  FileText,
-  BarChart,
   Clock,
   Wrench,
   Inbox,
+  Shirt,
+  Home,
 } from "lucide-react";
 const items = [
+  {
+    title: "لوحة التحكم",
+    icon: Users,
+    items: [
+      { title: "الصفحة الرئيسية", url: "/dashboard", icon: Home },
+
+    ],
+  },
   {
     title: "الإدارة والموارد البشرية",
     icon: Users,
@@ -26,7 +34,7 @@ const items = [
     title: "الشؤون المالية",
     icon: DollarSign,
     items: [
-      { title: "المصروفات", url: "#", icon: DollarSign },
+      { title: "المصروفات", url: "/dashboard/Expenses", icon: HandCoins },
       { title: "الرواتب والسلف", url: "/dashboard/Payroll", icon: DollarSign },
       { title: "العهد المالية", url: "/dashboard/Custody", icon: Package },
     ],
@@ -43,7 +51,8 @@ const items = [
     icon: Truck,
     items: [
       { title: "إدارة الموردين", url: "#", icon: Truck },
-      { title: "إدارة المخزون", url: "#", icon: Package },
+      { title: "إدارة المستهلكات", url: "#", icon: Package },
+      { title: "إدارة المهمات", url: "#", icon: Shirt }
     ],
   },
   {

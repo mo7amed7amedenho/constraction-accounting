@@ -16,18 +16,23 @@ import { HomeIcon } from "lucide-react";
 
 export function AppSidebar() {
   return (
-    <Sidebar side="right" variant="sidebar" className="hidden md:block">
+    <Sidebar side="right" variant="sidebar" className="hidden md:block" collapsible="icon">
       {/* ✅ الهيدر */}
-      <SidebarHeader className="border-b border-sidebar-border py-4">
-        <div className="flex items-center gap-2">
+      <SidebarHeader className="border-b border-sidebar-border py-1">
+        <div className="flex items-center gap-2 transition-all duration-300">
           <Image
             src="/logo.webp"
             width={50}
             height={50}
             alt="logo"
-            className="rounded-full md:w-16 md:h-16 w-12 h-12"
+            className="rounded-full transition-all duration-300 
+              md:w-16 md:h-16 w-12 h-12 
+              data-[collapsed=true]:w-10 data-[collapsed=true]:h-6"
           />
-          <div className="text-center">
+          <div
+            className="text-center transition-all duration-300 
+              data-[collapsed=true]:hidden overflow-hidden"
+          >
             <p className="text-xs text-gray-500 dark:text-white font-semibold">
               عسكر للمقاولات العمومية
             </p>
@@ -42,22 +47,9 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* ✅ المحتوى */}
-      <SidebarContent className="py-4">
-        <div className="p-2">
-          {/* ✅ الصفحة الرئيسية */}
-          <SidebarMenuButton>
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-x-reverse gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <HomeIcon className="w-6 h-6 text-gray-500" />
-              <span className="font-medium text-gray-900 dark:text-white">
-                الصفحة الرئيسية
-              </span>
-            </Link>
-          </SidebarMenuButton>
-
-          {/* ✅ الأقسام الأخرى */}
+      <SidebarContent>
+        <div>
+          {/* ✅ الأقسام */}
           {items.map((group, index) => (
             <SidebarGroup key={index} className="mt-1">
               <SidebarGroupLabel className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
