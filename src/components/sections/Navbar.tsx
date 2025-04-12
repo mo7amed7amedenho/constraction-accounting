@@ -16,7 +16,7 @@ export default function Navbar() {
   if (!mounted) return null; // ✅ لا تعرض أي شيء حتى يتم تحميل الصفحة
 
   return (
-    <nav className="bg-zinc-50 dark:bg-zinc-900 shadow-md py-2 sm:px-6 px-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 text-black dark:text-white">
+    <nav className="shadow-md py-2 sm:px-6 px-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 text-black dark:text-white">
       <div className="flex flex-col gap-1 py-1">
         <h3 className="text-sm font-bold">مرحبا بك, محمد حامد</h3>
         <p className="text-gray-600 text-sm dark:text-gray-400">مطور ويب</p>
@@ -26,7 +26,7 @@ export default function Navbar() {
         <ModeToggle />
         <Button
           type="default"
-          className="flex items-center gap-2 bg-gray-200 dark:bg-gray-800 text-black dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700"
+          className="flex items-center gap-2  text-black dark:text-white border-gray-300 dark:border-gray-600"
         >
           <span className="max-sm:hidden">Refresh</span>
           <LuRefreshCcw />

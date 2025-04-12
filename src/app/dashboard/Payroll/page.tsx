@@ -279,7 +279,7 @@ export default function PayrollPage() {
           ].map((btn) => (
             <Button
               key={btn.label}
-              type="primary"
+              type="dashed"
               size="middle"
               icon={<PlusCircle size={16} />}
               onClick={btn.onClick}
@@ -487,10 +487,11 @@ export default function PayrollPage() {
         width={600}
       >
         <NewDeduction
+          custody={selectedCustody ? { ...selectedCustody } : null}
           onSuccess={() => {
             setIsDeductionModalOpen(false);
             queryClient.invalidateQueries({
-              queryKey: ["deductions", "employees"],
+              queryKey: ["deductions", "employees", "custodies"],
             });
           }}
         />

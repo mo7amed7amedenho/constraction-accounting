@@ -9,20 +9,21 @@ datasource db {
 
 /// نموذج الموظف
 model Employee {
-  id          Int          @id @default(autoincrement())
-  name        String
-  jobTitle    String
-  nationalId  String       @unique
-  phoneNumber String       @unique
-  dailySalary Int          @default(0) // تغيير من Int إلى Int
-  budget      Int          @default(0) // تغيير من Int إلى Int
-  attendance  Attendance[]
-  deductions  Deduction[]
-  bonuses     Bonus[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  Payroll     Payroll[]
-  Advance     Advance[]
+  id           Int            @id @default(autoincrement())
+  name         String
+  jobTitle     String
+  nationalId   String         @unique
+  phoneNumber  String         @unique
+  dailySalary  Int            @default(0) // تغيير من Int إلى Int
+  budget       Int            @default(0) // تغيير من Int إلى Int
+  attendance   Attendance[]
+  deductions   Deduction[]
+  bonuses      Bonus[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  Payroll      Payroll[]
+  Advance      Advance[]
+  TaskDelivery TaskDelivery[]
 
   @@index([name])
 }
@@ -148,17 +149,25 @@ model Project {
   custodies   Custody[]
   expenses    Expense[]
   createdAt   DateTime  @default(now())
+
+  ConsumableUsage ConsumableUsage[]
 }
 
 /// نموذج الموردين
 model Supplier {
-  id          Int               @id @default(autoincrement())
-  name        String
-  phoneNumber String
-  address     String
-  invoices    SupplierInvoice[]
-  inventory   Inventory[]
-  createdAt   DateTime          @default(now())
+  id             Int               @id @default(autoincrement())
+  name           String
+  phoneNumber    String
+  address        String
+  balance        Decimal           @default(0) // رصيد المورد (لكشف الحساب)
+  invoices       SupplierInvoice[]
+  payments       SupplierPayment[] // سجل المدفوعات
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  Equipment      Equipment[]
+  ConsumableItem ConsumableItem[]
+
+  @@index([name])
 }
 
 /// نموذج فواتير الموردين
@@ -166,36 +175,123 @@ model SupplierInvoice {
   id          Int           @id @default(autoincrement())
   supplier    Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   supplierId  Int
-  invoiceType String
+  invoiceType String // معدات أو مستهلكات
+  invoiceDate DateTime      @default(now()) // تاريخ الفاتورة
   items       InvoiceItem[]
   totalAmount Decimal       @default(0)
+  paidAmount  Decimal       @default(0) // المبلغ المدفوع من الفاتورة
+  status      String        @default("pending") // الحالة: pending, partially_paid, paid
   createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([supplierId, invoiceDate])
 }
 
+/// نموذج عناصر الفاتورة
 model InvoiceItem {
-  id        Int             @id @default(autoincrement())
-  invoice   SupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  invoiceId Int
-  itemName  String
-  quantity  Int
-  price     Decimal
+  id           Int             @id @default(autoincrement())
+  invoice      SupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId    Int
+  itemName     String
+  quantity     Int
+  unitPrice    Decimal // سعر الوحدة
+  brand        String? // الماركة
+  equipmentId  Int? // ربط بالمعدات (اختياري)
+  consumableId Int? // ربط بالمستهلكات (اختياري)
+  equipment    Equipment?      @relation(fields: [equipmentId], references: [id])
+  consumable   ConsumableItem? @relation(fields: [consumableId], references: [id])
+  createdAt    DateTime        @default(now())
 }
 
-/// نموذج المخزون
-model Inventory {
-  id           Int       @id @default(autoincrement())
-  itemName     String
-  category     String
-  itemType     String
-  purchaseDate DateTime
-  price        Decimal
-  quantity     Int
-  minQuantity  Int       @default(0)
-  supplier     Supplier? @relation(fields: [supplierId], references: [id])
-  supplierId   Int?
-  createdAt    DateTime  @default(now())
+/// نموذج مدفوعات المورد
+model SupplierPayment {
+  id          Int      @id @default(autoincrement())
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId  Int
+  amount      Decimal
+  paymentDate DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([itemName, category])
+  @@index([supplierId, paymentDate])
+}
+
+/// جدول المعدات (الآلات)
+model Equipment {
+  id             Int           @id @default(autoincrement())
+  name           String
+  code           String        @unique
+  quantity       Int           @default(0)
+  brand          String? // الماركة
+  status         String        @default("available") // available | under_maintenance | broken
+  supplier       Supplier      @relation(fields: [supplierId], references: [id])
+  supplierId     Int
+  invoiceItems   InvoiceItem[] // ربط بعناصر الفاتورة
+  maintenanceLog Maintenance[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+/// جدول صيانة المعدات
+model Maintenance {
+  id              Int       @id @default(autoincrement())
+  equipment       Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId     Int
+  status          String // sent | returned | broken | fixed
+  date            DateTime  @default(now())
+  notes           String?
+  returnedQuantity Int? // عدد المعدات التي تم إصلاحها
+  brokenQuantity   Int? // عدد المعدات التالفة
+  pendingQuantity  Int? // عدد المعدات المتبقية في الصيانة
+}
+
+/// جدول المستهلكات (زي الأسمنت، الجبس...)
+model ConsumableItem {
+  id           Int               @id @default(autoincrement())
+  name         String
+  unit         String // كيس، متر، كيلو...
+  brand        String? // الماركة
+  stock        Int               @default(0)
+  supplier     Supplier          @relation(fields: [supplierId], references: [id])
+  supplierId   Int
+  invoiceItems InvoiceItem[] // ربط بعناصر الفاتورة
+  usages       ConsumableUsage[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+/// استخدام المستهلكات في المشاريع
+model ConsumableUsage {
+  id           Int            @id @default(autoincrement())
+  consumable   ConsumableItem @relation(fields: [consumableId], references: [id])
+  consumableId Int
+  project      Project?       @relation(fields: [projectId], references: [id])
+  projectId    Int?
+  quantityUsed Int
+  usedAt       DateTime       @default(now())
+  notes        String?
+}
+
+/// المهمات (لبس العمال)
+model TaskItem {
+  id         Int            @id @default(autoincrement())
+  name       String // أفارول، كاب، نضارة...
+  quantity   Int
+  deliveries TaskDelivery[]
+  createdAt  DateTime       @default(now())
+}
+
+/// تسليم المهمات للموظفين
+model TaskDelivery {
+  id         Int      @id @default(autoincrement())
+  taskItem   TaskItem @relation(fields: [taskItemId], references: [id])
+  taskItemId Int
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId Int
+  quantity   Int
+  date       DateTime @default(now())
+  notes      String?
 }
 
 /// نموذج المستخدم

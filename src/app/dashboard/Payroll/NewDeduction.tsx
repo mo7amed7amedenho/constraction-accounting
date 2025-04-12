@@ -11,10 +11,11 @@ import locale from "antd/lib/date-picker/locale/ar_EG";
 const { Option } = Select;
 
 interface DeductionProps {
+  custody: any;
   onSuccess: () => void;
 }
 
-export default function NewDeduction({ onSuccess }: DeductionProps) {
+export default function NewDeduction({ custody, onSuccess }: DeductionProps) {
   const [form] = Form.useForm();
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
 
@@ -44,16 +45,24 @@ export default function NewDeduction({ onSuccess }: DeductionProps) {
   });
 
   const handleEmployeeChange = (employeeId: number) => {
-    const employee = employees.find((emp: { id: number; }) => emp.id === employeeId);
+    const employee = employees.find(
+      (emp: { id: number }) => emp.id === employeeId
+    );
     setSelectedEmployee(employee);
   };
 
   const handleSubmit = () => {
-    form.validateFields().then(values => {
+    if (!custody) {
+      toast.error("يرجى اختيار العهدة أولاً");
+      return;
+    }
+
+    form.validateFields().then((values) => {
       createDeductionMutation.mutate({
         employeeId: values.employeeId,
         amount: values.amount,
         date: values.date.toISOString(),
+        custodyId: custody.id,
       });
     });
   };
@@ -82,8 +91,12 @@ export default function NewDeduction({ onSuccess }: DeductionProps) {
 
         {selectedEmployee && (
           <div className="bg-gray-100 p-3 rounded-md mb-4">
-            <p><strong>الراتب اليومي:</strong> {selectedEmployee.dailySalary} ج.م</p>
-            <p><strong>الرصيد الحالي:</strong> {selectedEmployee.budget} ج.م</p>
+            <p>
+              <strong>الراتب اليومي:</strong> {selectedEmployee.dailySalary} ج.م
+            </p>
+            <p>
+              <strong>الرصيد الحالي:</strong> {selectedEmployee.budget} ج.م
+            </p>
           </div>
         )}
 
@@ -94,10 +107,7 @@ export default function NewDeduction({ onSuccess }: DeductionProps) {
         >
           <InputNumber
             style={{ width: "100%" }}
-            min={1}
             placeholder="أدخل مبلغ الخصم"
-            formatter={(value) => `${value} ج.م`}
-            parser={(value: string | undefined): 1 => value ? 1 : 1}
           />
         </Form.Item>
 
@@ -115,9 +125,15 @@ export default function NewDeduction({ onSuccess }: DeductionProps) {
             type="primary"
             onClick={handleSubmit}
             loading={createDeductionMutation.isPending}
+            disabled={!custody}
           >
             إضافة الخصم
           </Button>
+          {!custody && (
+            <div className="text-red-500 mt-2">
+              يرجى اختيار العهدة أولاً من الصفحة الرئيسية
+            </div>
+          )}
         </Form.Item>
       </Form>
     </div>

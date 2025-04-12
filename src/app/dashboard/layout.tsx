@@ -38,7 +38,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     </div>
                     <div className="flex-1 flex flex-col w-full">
                       <Navbar />
-                      <main className="flex-1 bg-white dark:bg-neutral-950">
+                      <main className="flex-1">
                         <ToastProvider />
                         {children}
                       </main>

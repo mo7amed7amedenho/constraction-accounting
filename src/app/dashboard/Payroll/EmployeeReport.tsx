@@ -1,6 +1,6 @@
 //Payroll/EmployeeReport.tsx:
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Table, Button, DatePicker, Spin, Card, Divider } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -15,17 +15,27 @@ interface EmployeeReportProps {
 }
 
 export default function EmployeeReport({ employee }: EmployeeReportProps) {
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([dayjs().startOf('month'), dayjs()]);
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().startOf("month"),
+    dayjs(),
+  ]);
   const [startDate, endDate] = dateRange;
 
   // جلب بيانات الحضور
   const { data: attendance = [], isLoading: attendanceLoading } = useQuery({
     queryKey: ["attendance", employee.id, startDate, endDate],
     queryFn: async () => {
+      const adjustedEndDate = endDate.add(1, "day"); // إضافة يوم واحد
       const res = await axios.get(
-        `/api/attendance?startDate=${startDate.format("YYYY-MM-DD")}&endDate=${endDate.format("YYYY-MM-DD")}`
+        `/api/attendance?startDate=${startDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}&endDate=${adjustedEndDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}`
       );
-      return res.data.filter((record: any) => record.employeeId === employee.id);
+      return res.data.filter(
+        (record: any) => record.employeeId === employee.id
+      );
     },
   });
 
@@ -33,10 +43,17 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
   const { data: deductions = [], isLoading: deductionsLoading } = useQuery({
     queryKey: ["deductions", employee.id, startDate, endDate],
     queryFn: async () => {
+      const adjustedEndDate = endDate.add(1, "day");
       const res = await axios.get(
-        `/api/deductions?startDate=${startDate.format("YYYY-MM-DD")}&endDate=${endDate.format("YYYY-MM-DD")}`
+        `/api/deductions?startDate=${startDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}&endDate=${adjustedEndDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}`
       );
-      return res.data.filter((record: any) => record.employeeId === employee.id);
+      return res.data.filter(
+        (record: any) => record.employeeId === employee.id
+      );
     },
   });
 
@@ -44,10 +61,17 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
   const { data: bonuses = [], isLoading: bonusesLoading } = useQuery({
     queryKey: ["bonuses", employee.id, startDate, endDate],
     queryFn: async () => {
+      const adjustedEndDate = endDate.add(1, "day");
       const res = await axios.get(
-        `/api/bonuses?startDate=${startDate.format("YYYY-MM-DD")}&endDate=${endDate.format("YYYY-MM-DD")}`
+        `/api/bonuses?startDate=${startDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}&endDate=${adjustedEndDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}`
       );
-      return res.data.filter((record: any) => record.employeeId === employee.id);
+      return res.data.filter(
+        (record: any) => record.employeeId === employee.id
+      );
     },
   });
 
@@ -55,10 +79,17 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
   const { data: advances = [], isLoading: advancesLoading } = useQuery({
     queryKey: ["advances", employee.id, startDate, endDate],
     queryFn: async () => {
+      const adjustedEndDate = endDate.add(1, "day");
       const res = await axios.get(
-        `/api/advances?startDate=${startDate.format("YYYY-MM-DD")}&endDate=${endDate.format("YYYY-MM-DD")}`
+        `/api/advances?startDate=${startDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}&endDate=${adjustedEndDate
+          .startOf("day")
+          .format("YYYY-MM-DD")}`
       );
-      return res.data.filter((record: any) => record.employeeId === employee.id);
+      return res.data.filter(
+        (record: any) => record.employeeId === employee.id
+      );
     },
   });
 
@@ -87,7 +118,8 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
   );
 
   // حساب صافي الراتب
-  const netSalary = totalBaseSalary + totalBonuses - totalDeductions - totalAdvances;
+  const netSalary =
+    totalBaseSalary + totalBonuses - totalDeductions - totalAdvances;
 
   // أعمدة جدول الحضور
   const attendanceColumns = [
@@ -107,7 +139,8 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
       title: "وقت الانصراف",
       dataIndex: "checkOut",
       key: "checkOut",
-      render: (text: string) => text ? new Date(text).toLocaleTimeString("ar-EG") : "-",
+      render: (text: string) =>
+        text ? new Date(text).toLocaleTimeString("ar-EG") : "-",
     },
     {
       title: "ملاحظات",
@@ -303,7 +336,9 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
             </div>
             
             <div class="date-range">
-              الفترة من ${startDate.format("YYYY/MM/DD")} إلى ${endDate.format("YYYY/MM/DD")}
+              الفترة من ${startDate.format("YYYY/MM/DD")} إلى ${endDate.format(
+        "YYYY/MM/DD"
+      )}
             </div>
             
             <div class="employee-info">
@@ -314,16 +349,24 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
                 <span class="info-label">الوظيفة:</span> ${employee.jobTitle}
               </div>
               <div class="info-item">
-                <span class="info-label">الرقم القومي:</span> ${employee.nationalId}
+                <span class="info-label">الرقم القومي:</span> ${
+                  employee.nationalId
+                }
               </div>
               <div class="info-item">
-                <span class="info-label">رقم الهاتف:</span> ${employee.phoneNumber}
+                <span class="info-label">رقم الهاتف:</span> ${
+                  employee.phoneNumber
+                }
               </div>
               <div class="info-item">
-                <span class="info-label">الراتب اليومي:</span> ${employee.dailySalary} ج.م
+                <span class="info-label">الراتب اليومي:</span> ${
+                  employee.dailySalary
+                } ج.م
               </div>
               <div class="info-item">
-                <span class="info-label">الرصيد الحالي:</span> ${employee.budget} ج.م
+                <span class="info-label">الرصيد الحالي:</span> ${
+                  employee.budget
+                } ج.م
               </div>
             </div>
             
@@ -339,19 +382,35 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${attendance.map((record: any) => `
+                  ${attendance
+                    .map(
+                      (record: any) => `
                     <tr>
-                      <td>${new Date(record.date).toLocaleDateString("ar-EG")}</td>
-                      <td>${new Date(record.checkIn).toLocaleTimeString("ar-EG")}</td>
-                      <td>${record.checkOut ? new Date(record.checkOut).toLocaleTimeString("ar-EG") : "-"}</td>
+                      <td>${new Date(record.date).toLocaleDateString(
+                        "ar-EG"
+                      )}</td>
+                      <td>${new Date(record.checkIn).toLocaleTimeString(
+                        "ar-EG"
+                      )}</td>
+                      <td>${
+                        record.checkOut
+                          ? new Date(record.checkOut).toLocaleTimeString(
+                              "ar-EG"
+                            )
+                          : "-"
+                      }</td>
                       <td>${record.notes || "-"}</td>
                     </tr>
-                  `).join('')}
+                  `
+                    )
+                    .join("")}
                 </tbody>
               </table>
             </div>
             
-            ${deductions.length > 0 ? `
+            ${
+              deductions.length > 0
+                ? `
               <div class="section">
                 <h3 class="section-title">الخصومات</h3>
                 <table>
@@ -362,18 +421,28 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    ${deductions.map((record: any) => `
+                    ${deductions
+                      .map(
+                        (record: any) => `
                       <tr>
-                        <td>${new Date(record.date).toLocaleDateString("ar-EG")}</td>
+                        <td>${new Date(record.date).toLocaleDateString(
+                          "ar-EG"
+                        )}</td>
                         <td>${Number(record.amount).toLocaleString()} ج.م</td>
                       </tr>
-                    `).join('')}
+                    `
+                      )
+                      .join("")}
                   </tbody>
                 </table>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
             
-            ${bonuses.length > 0 ? `
+            ${
+              bonuses.length > 0
+                ? `
               <div class="section">
                 <h3 class="section-title">المكافآت</h3>
                 <table>
@@ -385,19 +454,29 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    ${bonuses.map((record: any) => `
+                    ${bonuses
+                      .map(
+                        (record: any) => `
                       <tr>
-                        <td>${new Date(record.date).toLocaleDateString("ar-EG")}</td>
+                        <td>${new Date(record.date).toLocaleDateString(
+                          "ar-EG"
+                        )}</td>
                         <td>${Number(record.amount).toLocaleString()} ج.م</td>
                         <td>${record.reason}</td>
                       </tr>
-                    `).join('')}
+                    `
+                      )
+                      .join("")}
                   </tbody>
                 </table>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
             
-            ${advances.length > 0 ? `
+            ${
+              advances.length > 0
+                ? `
               <div class="section">
                 <h3 class="section-title">السلف</h3>
                 <table>
@@ -409,21 +488,33 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    ${advances.map((record: any) => `
+                    ${advances
+                      .map(
+                        (record: any) => `
                       <tr>
-                        <td>${new Date(record.requestDate).toLocaleDateString("ar-EG")}</td>
+                        <td>${new Date(record.requestDate).toLocaleDateString(
+                          "ar-EG"
+                        )}</td>
                         <td>${Number(record.amount).toLocaleString()} ج.م</td>
                         <td>${
-                          record.status === "pending" ? "قيد الانتظار" :
-                          record.status === "approved" ? "تمت الموافقة" :
-                          record.status === "repaid" ? "تم السداد" : record.status
+                          record.status === "pending"
+                            ? "قيد الانتظار"
+                            : record.status === "approved"
+                            ? "تمت الموافقة"
+                            : record.status === "repaid"
+                            ? "تم السداد"
+                            : record.status
                         }</td>
                       </tr>
-                    `).join('')}
+                    `
+                      )
+                      .join("")}
                   </tbody>
                 </table>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
             
             <div class="summary">
               <div class="summary-item">
@@ -453,7 +544,9 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
             </div>
             
             <div class="footer">
-              <p>تم إصدار هذا التقرير بتاريخ ${new Date().toLocaleDateString("ar-EG")} الساعة ${new Date().toLocaleTimeString("ar-EG")}</p>
+              <p>تم إصدار هذا التقرير بتاريخ ${new Date().toLocaleDateString(
+                "ar-EG"
+              )} الساعة ${new Date().toLocaleTimeString("ar-EG")}</p>
             </div>
           </div>
           <script>
@@ -466,7 +559,8 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
     }
   };
 
-  const isLoading = attendanceLoading || deductionsLoading || bonusesLoading || advancesLoading;
+  const isLoading =
+    attendanceLoading || deductionsLoading || bonusesLoading || advancesLoading;
 
   return (
     <div className="rtl">
@@ -489,7 +583,7 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
           value={dateRange}
           onChange={(dates) => {
             if (dates && dates[0] && dates[1]) {
-              setDateRange([dates[0], dates[1]]);
+              setDateRange([dates[0].startOf("day"), dates[1].endOf("day")]);
             }
           }}
           locale={locale}
@@ -529,25 +623,35 @@ export default function EmployeeReport({ employee }: EmployeeReportProps) {
               </div>
               <div>
                 <p className="text-gray-500">الراتب الأساسي</p>
-                <p className="text-lg font-semibold">{totalBaseSalary.toLocaleString()} ج.م</p>
+                <p className="text-lg font-semibold">
+                  {totalBaseSalary.toLocaleString()} ج.م
+                </p>
               </div>
               <div>
                 <p className="text-gray-500">المكافآت</p>
-                <p className="text-lg font-semibold text-green-600">+{totalBonuses.toLocaleString()} ج.م</p>
+                <p className="text-lg font-semibold text-green-600">
+                  +{totalBonuses.toLocaleString()} ج.م
+                </p>
               </div>
               <div>
                 <p className="text-gray-500">الخصومات</p>
-                <p className="text-lg font-semibold text-red-600">-{totalDeductions.toLocaleString()} ج.م</p>
+                <p className="text-lg font-semibold text-red-600">
+                  -{totalDeductions.toLocaleString()} ج.م
+                </p>
               </div>
               <div>
                 <p className="text-gray-500">السلف</p>
-                <p className="text-lg font-semibold text-orange-600">-{totalAdvances.toLocaleString()} ج.م</p>
+                <p className="text-lg font-semibold text-orange-600">
+                  -{totalAdvances.toLocaleString()} ج.م
+                </p>
               </div>
             </div>
             <Divider />
             <div className="flex justify-between items-center">
               <p className="text-lg font-bold">صافي الراتب:</p>
-              <p className="text-xl font-bold text-blue-600">{netSalary.toLocaleString()} ج.م</p>
+              <p className="text-xl font-bold text-blue-600">
+                {netSalary.toLocaleString()} ج.م
+              </p>
             </div>
           </Card>
 

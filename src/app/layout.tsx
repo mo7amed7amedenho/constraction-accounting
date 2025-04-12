@@ -31,7 +31,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <MUITheme>
                 <div className="flex flex-1">
                   <div className="flex-1 flex flex-col">
-                    <main className="flex-1 bg-white dark:bg-neutral-950">
+                    <main className="flex-1">
                       <ToastProvider />
                       {children}
                     </main>

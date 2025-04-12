@@ -40,12 +40,16 @@ export default function NewBonus({ custody, onSuccess }: BonusProps) {
       onSuccess();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || "حدث خطأ أثناء إضافة المكافأة");
+      toast.error(
+        error.response?.data?.error || "حدث خطأ أثناء إضافة المكافأة"
+      );
     },
   });
 
   const handleEmployeeChange = (employeeId: number) => {
-    const employee = employees.find((emp: { id: number; }) => emp.id === employeeId);
+    const employee = employees.find(
+      (emp: { id: number }) => emp.id === employeeId
+    );
     setSelectedEmployee(employee);
   };
 
@@ -54,14 +58,14 @@ export default function NewBonus({ custody, onSuccess }: BonusProps) {
       toast.error("يرجى اختيار العهدة أولاً");
       return;
     }
-    
-    form.validateFields().then(values => {
+
+    form.validateFields().then((values) => {
       // التحقق من كفاية رصيد العهدة
       if (values.amount > custody.remaining) {
         toast.error("رصيد العهدة غير كافٍ لإضافة المكافأة");
         return;
       }
-      
+
       createBonusMutation.mutate({
         employeeId: values.employeeId,
         amount: values.amount,
@@ -96,8 +100,12 @@ export default function NewBonus({ custody, onSuccess }: BonusProps) {
 
         {selectedEmployee && (
           <div className="bg-gray-100 p-3 rounded-md mb-4">
-            <p><strong>الراتب اليومي:</strong> {selectedEmployee.dailySalary} ج.م</p>
-            <p><strong>الرصيد الحالي:</strong> {selectedEmployee.budget} ج.م</p>
+            <p>
+              <strong>الراتب اليومي:</strong> {selectedEmployee.dailySalary} ج.م
+            </p>
+            <p>
+              <strong>الرصيد الحالي:</strong> {selectedEmployee.budget} ج.م
+            </p>
           </div>
         )}
 
@@ -108,10 +116,7 @@ export default function NewBonus({ custody, onSuccess }: BonusProps) {
         >
           <InputNumber
             style={{ width: "100%" }}
-            min={1}
             placeholder="أدخل مبلغ المكافأة"
-            formatter={(value) => `${value} ج.م`}
-            parser={(value: string | undefined): 1 => value ? 1 : 1}
           />
         </Form.Item>
 
@@ -142,7 +147,9 @@ export default function NewBonus({ custody, onSuccess }: BonusProps) {
             إضافة المكافأة
           </Button>
           {!custody && (
-            <div className="text-red-500 mt-2">يرجى اختيار العهدة أولاً من الصفحة الرئيسية</div>
+            <div className="text-red-500 mt-2">
+              يرجى اختيار العهدة أولاً من الصفحة الرئيسية
+            </div>
           )}
         </Form.Item>
       </Form>

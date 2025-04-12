@@ -16,7 +16,12 @@ import { HomeIcon } from "lucide-react";
 
 export function AppSidebar() {
   return (
-    <Sidebar side="right" variant="sidebar" className="hidden md:block" collapsible="icon">
+    <Sidebar
+      side="right"
+      variant="sidebar"
+      className="hidden md:block"
+      collapsible="icon"
+    >
       {/* ✅ الهيدر */}
       <SidebarHeader className="border-b border-sidebar-border py-1">
         <div className="flex items-center gap-2 transition-all duration-300">

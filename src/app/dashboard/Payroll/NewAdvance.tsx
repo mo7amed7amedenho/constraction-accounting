@@ -114,9 +114,7 @@ export default function NewAdvance({ custody, onSuccess }: AdvanceProps) {
         >
           <InputNumber
             style={{ width: "100%" }}
-            min={1}
             placeholder="أدخل مبلغ السلفة"
-            parser={(value: string | undefined): 1 => (value ? 1 : 1)}
           />
         </Form.Item>
 
@@ -138,7 +136,7 @@ export default function NewAdvance({ custody, onSuccess }: AdvanceProps) {
           <Select placeholder="اختر حالة السلفة">
             <Option value="pending">قيد الانتظار</Option>
             <Option value="approved">تمت الموافقة</Option>
-            <Option value="repaid">تم السداد</Option>
+            {/* <Option value="repaid">تم السداد</Option> */}
           </Select>
         </Form.Item>
 
