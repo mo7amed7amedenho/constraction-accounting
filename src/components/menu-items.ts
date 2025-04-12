@@ -13,6 +13,7 @@ import {
   Inbox,
   Shirt,
   Home,
+  UserCog,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -75,8 +76,8 @@ export const items: MenuGroup[] = [
   {
     title: "إعدادات النظام",
     items: [
-      { title: "الإعدادات", url: "#", icon: Settings },
-      { title: "إدارة المستخدمين", url: "#", icon: Users },
+      { title: "الإعدادات", url: "/dashboard/Settings", icon: Settings },
+      { title: "إدارة المستخدمين", url: "/dashboard/users", icon: UserCog },
     ],
   },
 ];

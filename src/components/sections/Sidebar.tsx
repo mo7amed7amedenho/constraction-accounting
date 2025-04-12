@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Sidebar,
   SidebarContent,
@@ -9,12 +11,49 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { items } from "@/components/menu-items";
+import { items, MenuGroup, MenuItem } from "@/components/menu-items";
 import Image from "next/image";
 import Link from "next/link";
-import { HomeIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function AppSidebar() {
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+
+  // جلب الصلاحيات من localStorage
+  useEffect(() => {
+    const getUserData = () => {
+      try {
+        const userData = localStorage.getItem("userData");
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserPermissions(user.permissions || []);
+        }
+      } catch (error) {
+        console.error("Error loading user permissions:", error);
+        setUserPermissions([]);
+      }
+    };
+
+    getUserData();
+    
+    // إضافة مستمع للتغييرات في localStorage
+    window.addEventListener("storage", getUserData);
+    
+    return () => {
+      window.removeEventListener("storage", getUserData);
+    };
+  }, []);
+
+  // تصفية العناصر بناءً على الصلاحيات
+  const filteredItems = items
+    .map((group: MenuGroup) => ({
+      ...group,
+      items: group.items.filter((item: MenuItem) =>
+        userPermissions.includes(item.title)
+      ),
+    }))
+    .filter((group: MenuGroup) => group.items.length > 0);
+
   return (
     <Sidebar
       side="right"
@@ -55,7 +94,7 @@ export function AppSidebar() {
       <SidebarContent>
         <div>
           {/* ✅ الأقسام */}
-          {items.map((group, index) => (
+          {filteredItems.map((group, index) => (
             <SidebarGroup key={index} className="mt-1">
               <SidebarGroupLabel className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                 {group.title}

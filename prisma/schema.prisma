@@ -235,12 +235,12 @@ model Equipment {
 
 /// جدول صيانة المعدات
 model Maintenance {
-  id              Int       @id @default(autoincrement())
-  equipment       Equipment @relation(fields: [equipmentId], references: [id])
-  equipmentId     Int
-  status          String // sent | returned | broken | fixed
-  date            DateTime  @default(now())
-  notes           String?
+  id               Int       @id @default(autoincrement())
+  equipment        Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId      Int
+  status           String // sent | returned | broken | fixed
+  date             DateTime  @default(now())
+  notes            String?
   returnedQuantity Int? // عدد المعدات التي تم إصلاحها
   brokenQuantity   Int? // عدد المعدات التالفة
   pendingQuantity  Int? // عدد المعدات المتبقية في الصيانة
@@ -294,24 +294,23 @@ model TaskDelivery {
   notes      String?
 }
 
-/// نموذج المستخدم
 model User {
   id          Int          @id @default(autoincrement())
   email       String       @unique
   name        String
   password    String
-  role        String
+  role        String // admin, manager, etc.
+  isActive    Boolean      @default(true)
+  lastLogin   DateTime?
   permissions Permission[]
   createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
-/// نموذج الصلاحيات
+// نموذج الصلاحيات، يخزن معلومات عن الصلاحيات المعطاة لكل مستخدم
 model Permission {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int
-  menuItem  String
-  createdAt DateTime @default(now())
-
-  @@unique([userId, menuItem])
+  id       Int    @id @default(autoincrement())
+  userId   Int // معرف المستخدم
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menuItem String // العنصر الذي يملك المستخدم صلاحية عليه
 }
